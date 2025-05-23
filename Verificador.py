@@ -43,40 +43,61 @@ def verificar_api():
     resposta = requests.get(url, timeout=10)
     print(resposta)
     
-    mensagem_funcionando = "✅API funcionando corretamente"
-    mensagem_scheme = "SCHEMA URL deve começar com http:// ou https://"
     ERROS_API = {
-    400: "Requisição inválida",
-    401: "Não autorizado",
-    403: "Acesso proibido",
-    404: "Endpoint não encontrado",
-    500: "Erro interno do servidor",
-    503: "Serviço indisponível",
-    "CONNECTION": "Falha na conexão com o servidor",
-    "TIMEOUT": "Tempo de espera excedido",
-    "SSL": "Problema com certificado SSL",
-    "JSON": "Resposta não é um JSON válido",
-    "GENERICO": "Erro desconhecido"}
+        200: ("✅ API funcionando corretamente", "#00FF00"),
+        400: ("❌ Erro 400: Requisição inválida", "#FF0000"),
+        401: ("❌ Erro 401: Não autorizado", "#FF0000"),
+        403: ("❌ Erro 403: Acesso proibido", "#FF0000"),
+        404: ("❌ Erro 404: Endpoint não encontrado", "#FF0000"),
+        500: ("❌ Erro 500: Erro interno do servidor", "#FF0000"),
+        503: ("❌ Erro 503: Serviço indisponível", "#FF0000"),
+        "SCHEMA": ("⚠️ URL deve começar com http:// ou https://", "#FFA500"),
+        "CONNECTION": ("⚠️ Falha na conexão com o servidor", "#FF0000"),
+        "TIMEOUT": ("⚠️ Tempo de espera excedido", "#FFA500"),
+        "SSL": ("⚠️ Problema com certificado SSL", "#FF0000"),
+        "JSON": ("⚠️ Resposta não é um JSON válido", "#FFA500"),
+        "GENERICO": ("⚠️ Erro desconhecido", "#FF0000")
+    }
 
-
-    if not url.startswith(("http://", "https://")):
-       mostrar_resultado(f"⚠️ {mensagem_scheme}", "#a9c8ff")
-
+    # Verificação inicial da URL
+    if not url:
+        mostrar_resultado("⚠️ Por favor, digite uma URL válida!", "#FF0000")
+        return
         
+    if not url.startswith(("http://", "https://")):
+        mostrar_resultado(ERROS_API["SCHEMA"][0], ERROS_API["SCHEMA"][1])
+        return
+
     try:
-        if resposta.status_code == 200:
-                mostrar_resultado(f"{mensagem_funcionando}", "#a9c8ff")            
-    
-    except requests.exceptions.ConnectionError:
-        mostrar_resultado(f"⚠️ {ERROS_API['CONNECTION']}", "#a9c8ff")
-    
-    except requests.exceptions.Timeout:
-        mostrar_resultado(f"⚠️ {ERROS_API['TIMEOUT']}", "#a9c8ff")
-    
-    except requests.exceptions.SSLError:
-        mostrar_resultado(f"⚠️ {ERROS_API['SSL']}")
+        resposta = requests.get(url, timeout=10)
+        
+        if resposta.status_code in ERROS_API:
+            mensagem, cor = ERROS_API[resposta.status_code]
+            mostrar_resultado(mensagem, cor)
+            
+            if resposta.status_code == 200:
+                try:
+                    resposta.json()
+                except ValueError:
+                    mostrar_resultado("⚠️ API respondeu, mas o JSON é inválido", "#FFA500")
+        else:
+            mostrar_resultado(f"⚠️ Erro HTTP não catalogado: {resposta.status_code}", "#FF0000")
 
+    except requests.exceptions.RequestException as erro:
+        tipo_erro = type(erro).__name__
+        codigos_erro = {
+            "ConnectionError": "CONNECTION",
+            "Timeout": "TIMEOUT",
+            "SSLError": "SSL",
+            "MissingSchema": "SCHEMA"
+        }
+        
+        erro_key = codigos_erro.get(tipo_erro, "GENERICO")
+        mensagem, cor = ERROS_API[erro_key]
+        mostrar_resultado(mensagem, cor)
 
+    except Exception as erro:
+        mostrar_resultado(ERROS_API["GENERICO"][0], ERROS_API["GENERICO"][1])
 
 def mostrar_resultado(mensagem, color="#a9c8ff"):
     resultado = CTk.CTkLabel(janela_principal, text=mensagem, text_color="#a9c8ff", font=("Arial", 16))
